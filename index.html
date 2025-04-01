@@ -1,425 +1,649 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Calculadora de Cuotas de Crédito</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 20px;
-      color: #333;
-    }
-    
-    h1 {
-      color: #2c3e50;
-      text-align: center;
-    }
-    
-    .form-group {
-      margin-bottom: 15px;
-    }
-    
-    label {
-      display: block;
-      margin-bottom: 5px;
-      font-weight: bold;
-    }
-    
-    input, select {
-      width: 100%;
-      padding: 8px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      box-sizing: border-box;
-    }
-    
-    button {
-      background-color: #3498db;
-      color: white;
-      border: none;
-      padding: 10px 15px;
-      border-radius: 4px;
-      cursor: pointer;
-      width: 100%;
-      font-size: 16px;
-      margin-top: 10px;
-    }
-    
-    button:hover {
-      background-color: #2980b9;
-    }
-    
-    .results {
-      margin-top: 20px;
-      border-top: 1px solid #ddd;
-      padding-top: 20px;
-    }
-    
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-    }
-    
-    th, td {
-      border: 1px solid #ddd;
-      padding: 8px;
-      text-align: right;
-    }
-    
-    th {
-      background-color: #f2f2f2;
-      text-align: center;
-    }
-    
-    tr:nth-child(even) {
-      background-color: #f9f9f9;
-    }
-    
-    .summary {
-      margin-top: 20px;
-      font-weight: bold;
-    }
-    
-    .rate-container {
-      display: flex;
-      gap: 10px;
-    }
-    
-    .rate-container .form-group {
-      flex: 1;
-    }
-    
-    .ahorro {
-      color: #27ae60;
-      font-weight: bold;
-    }
-    
-    .button-group {
-      display: flex;
-      gap: 10px;
-      margin-top: 20px;
-    }
-    
-    .button-group button {
-      flex: 1;
-    }
-    
-    .export-button {
-      background-color: #27ae60;
-    }
-    
-    .export-button:hover {
-      background-color: #219653;
-    }
-  </style>
-</head>
-<body>
-  <h1>Calculadora de Cuotas de Crédito</h1>
-  
-  <div class="form-group">
-    <label for="monto">Monto del préstamo:</label>
-    <input type="number" id="monto" min="1" step="any" placeholder="Ej: 10000">
-  </div>
-  
-  <div class="rate-container">
-    <div class="form-group">
-      <label for="tasaAnual">Tasa de interés anual (%):</label>
-      <input type="number" id="tasaAnual" min="0.01" step="any" placeholder="Ej: 18" oninput="calcularTasaMensual()">
-    </div>
-    
-    <div class="form-group">
-      <label for="tasaInteres">Tasa mensual (%):</label>
-      <input type="number" id="tasaInteres" min="0.01" step="any" placeholder="Ej: 1.5" oninput="calcularTasaAnual()">
-    </div>
-  </div>
-  
-  <div class="form-group">
-    <label for="plazo">Plazo en meses:</label>
-    <input type="number" id="plazo" min="1" placeholder="Ej: 12">
-  </div>
-  
-  <div class="form-group">
-    <label for="abonoAdicional">Abono adicional a capital mensual (opcional):</label>
-    <input type="number" id="abonoAdicional" min="0" step="any" placeholder="Ej: 100">
-  </div>
-  
-  <button onclick="calcularCuotas()">Calcular</button>
-  
-  <div class="results" id="results" style="display: none;">
-    <h2>Resumen del crédito</h2>
-    <div id="summary" class="summary"></div>
-    
-    <div class="button-group">
-      <button onclick="exportarExcel()" class="export-button">Exportar a Excel</button>
-    </div>
-    
-    <h3>Tabla de amortización</h3>
-    <div style="overflow-x: auto;">
-      <table id="amortizationTable">
-        <thead>
-          <tr>
-            <th>Mes</th>
-            <th>Cuota</th>
-            <th>Interés</th>
-            <th>Abono Extra</th>
-            <th>Capital</th>
-            <th>Saldo</th>
-          </tr>
-        </thead>
-        <tbody id="tableBody"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <script>
-    // Variables globales para almacenar los datos calculados
-    let datosTabla = [];
-    let datosSummary = {};
-    
-    // Calcular tasa mensual a partir de la anual
-    function calcularTasaMensual() {
-      const tasaAnual = parseFloat(document.getElementById('tasaAnual').value);
-      if (!isNaN(tasaAnual)) {
-        // Convertir tasa anual a mensual
-        const tasaMensual = ((Math.pow(1 + tasaAnual/100, 1/12)) - 1) * 100;
-        document.getElementById('tasaInteres').value = tasaMensual.toFixed(4);
-      }
-    }
-    
-    // Calcular tasa anual a partir de la mensual
-    function calcularTasaAnual() {
-      const tasaMensual = parseFloat(document.getElementById('tasaInteres').value);
-      if (!isNaN(tasaMensual)) {
-        // Convertir tasa mensual a anual
-        const tasaAnual = ((Math.pow(1 + tasaMensual/100, 12)) - 1) * 100;
-        document.getElementById('tasaAnual').value = tasaAnual.toFixed(2);
-      }
-    }
-    
-    function calcularCuotas() {
-      // Obtener valores del formulario
-      const monto = parseFloat(document.getElementById('monto').value);
-      const tasaInteresMensual = parseFloat(document.getElementById('tasaInteres').value) / 100;
-      const tasaAnual = parseFloat(document.getElementById('tasaAnual').value);
-      const plazo = parseInt(document.getElementById('plazo').value);
-      const abonoAdicional = parseFloat(document.getElementById('abonoAdicional').value) || 0;
-      
-      // Validar entradas
-      if (!monto || !tasaInteresMensual || !plazo) {
-        alert('Por favor complete todos los campos requeridos');
-        return;
-      }
-      
-      // Calcular cuota mensual fija (fórmula de amortización)
-      const cuotaMensual = monto * (tasaInteresMensual * Math.pow(1 + tasaInteresMensual, plazo)) / 
-                         (Math.pow(1 + tasaInteresMensual, plazo) - 1);
-      
-      // Calcular amortización sin abonos adicionales para comparar
-      const datosNormales = calcularAmortizacionSimple(monto, tasaInteresMensual, plazo, cuotaMensual);
-      
-      // Calcular amortización con abonos adicionales
-      let saldoRestante = monto;
-      let totalIntereses = 0;
-      let totalCapital = 0;
-      let totalPagado = 0;
-      let totalAbonosExtra = 0;
-      let mesesReales = 0;
-      
-      // Limpiar tabla anterior y array de datos
-      const tableBody = document.getElementById('tableBody');
-      tableBody.innerHTML = '';
-      datosTabla = [];
-      
-      // Generar tabla de amortización
-      for (let mes = 1; mes <= plazo; mes++) {
-        if (saldoRestante <= 0) break;
-        
-        // Calcular componentes de la cuota para este mes
-        const interesMensual = saldoRestante * tasaInteresMensual;
-        let capitalMensual = cuotaMensual - interesMensual;
-        let abonoMensual = abonoAdicional;
-        
-        // Ajustar en el último pago o si el abono adicional hace que se pague todo
-        if (capitalMensual + abonoMensual > saldoRestante) {
-          if (saldoRestante < capitalMensual) {
-            abonoMensual = 0;
-            capitalMensual = saldoRestante;
-          } else {
-            abonoMensual = saldoRestante - capitalMensual;
-          }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Cuotas de Crédito</title>
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3a0ca3;
+            --accent-color: #7209b7;
+            --background-color: #f8f9fa;
+            --card-color: #ffffff;
+            --text-color: #212529;
+            --border-radius: 12px;
+            --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
         
-        saldoRestante -= (capitalMensual + abonoMensual);
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
         
-        // Actualizar totales
-        totalIntereses += interesMensual;
-        totalCapital += capitalMensual;
-        totalAbonosExtra += abonoMensual;
-        totalPagado += (capitalMensual + interesMensual + abonoMensual);
-        mesesReales = mes;
+        body {
+            background: linear-gradient(135deg, #4158D0, #C850C0, #FFCC70);
+            background-attachment: fixed;
+            color: var(--text-color);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: background 1s ease;
+        }
         
-        // Agregar datos a la tabla visible
-        const row = tableBody.insertRow();
+        body.theme-1 {
+            background: linear-gradient(135deg, #4158D0, #C850C0, #FFCC70);
+        }
         
-        row.insertCell(0).textContent = mes;
-        row.insertCell(1).textContent = formatCurrency(capitalMensual + interesMensual);
-        row.insertCell(2).textContent = formatCurrency(interesMensual);
-        row.insertCell(3).textContent = formatCurrency(abonoMensual);
-        row.insertCell(4).textContent = formatCurrency(capitalMensual + abonoMensual);
-        row.insertCell(5).textContent = formatCurrency(saldoRestante);
+        body.theme-2 {
+            background: linear-gradient(135deg, #00B4DB, #0083B0, #6DD5FA);
+        }
         
-        // Guardar datos para exportación
-        datosTabla.push({
-          mes: mes,
-          cuota: capitalMensual + interesMensual,
-          interes: interesMensual,
-          abonoExtra: abonoMensual,
-          capital: capitalMensual + abonoMensual,
-          saldo: saldoRestante
+        body.theme-3 {
+            background: linear-gradient(135deg, #f12711, #f5af19);
+        }
+        
+        body.theme-4 {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+        }
+        
+        body.theme-5 {
+            background: linear-gradient(135deg, #8E2DE2, #4A00E0);
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        h1 {
+            color: white;
+            margin-bottom: 0.5rem;
+            font-size: 2rem;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
+        }
+        
+        header p {
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        
+        .theme-selector {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 1rem;
+            gap: 10px;
+        }
+        
+        .theme-option {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid white;
+            transition: transform 0.3s;
+        }
+        
+        .theme-option:hover {
+            transform: scale(1.1);
+        }
+        
+        .theme-option.theme-1 {
+            background: linear-gradient(135deg, #4158D0, #C850C0);
+        }
+        
+        .theme-option.theme-2 {
+            background: linear-gradient(135deg, #00B4DB, #0083B0);
+        }
+        
+        .theme-option.theme-3 {
+            background: linear-gradient(135deg, #f12711, #f5af19);
+        }
+        
+        .theme-option.theme-4 {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+        }
+        
+        .theme-option.theme-5 {
+            background: linear-gradient(135deg, #8E2DE2, #4A00E0);
+        }
+        
+        .card {
+            background-color: var(--card-color);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            width: 100%;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-row .form-group {
+            flex: 1;
+            margin-bottom: 0;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.3);
+        }
+        
+        button {
+            background: linear-gradient(to right, var(--primary-color), var(--accent-color));
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .results {
+            display: none;
+        }
+        
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 1rem 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .result-item:last-child {
+            border-bottom: none;
+        }
+        
+        .result-label {
+            font-weight: 500;
+        }
+        
+        .result-value {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+        
+        .savings {
+            margin-top: 1.5rem;
+            background-color: #E3F2FD;
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid #2196F3;
+        }
+        
+        .savings h3 {
+            color: #1565C0;
+            margin-bottom: 1rem;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            margin-top: 1.5rem;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        thead {
+            background: linear-gradient(to right, var(--primary-color), var(--accent-color));
+            color: white;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: right;
+            border-bottom: 1px solid #eee;
+        }
+        
+        th:first-child, td:first-child {
+            text-align: left;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f8f9fc;
+        }
+
+        .comparison-container {
+            display: flex;
+            gap: 20px;
+            margin-top: 2rem;
+        }
+        
+        .comparison-col {
+            flex: 1;
+        }
+        
+        .comparison-col h3 {
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #eee;
+        }
+        
+        @media (max-width: 768px) {
+            .card {
+                padding: 1.5rem;
+            }
+            
+            h1 {
+                font-size: 1.75rem;
+            }
+            
+            .result-item {
+                flex-direction: column;
+                gap: 0.25rem;
+            }
+            
+            .form-row {
+                flex-direction: column;
+                gap: 1.5rem;
+            }
+            
+            .comparison-container {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body class="theme-1">
+    <div class="container">
+        <header>
+            <h1>Calculadora de Cuotas de Crédito</h1>
+            <p>Calcula fácilmente las cuotas de tu préstamo y el ahorro con abonos adicionales</p>
+        </header>
+        
+        <div class="theme-selector">
+            <div class="theme-option theme-1" onclick="changeTheme('theme-1')"></div>
+            <div class="theme-option theme-2" onclick="changeTheme('theme-2')"></div>
+            <div class="theme-option theme-3" onclick="changeTheme('theme-3')"></div>
+            <div class="theme-option theme-4" onclick="changeTheme('theme-4')"></div>
+            <div class="theme-option theme-5" onclick="changeTheme('theme-5')"></div>
+        </div>
+        
+        <div class="card">
+            <form id="loan-form">
+                <div class="form-group">
+                    <label for="amount">Monto del Préstamo</label>
+                    <input type="number" id="amount" placeholder="Ingresa el monto total" required min="1">
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="annual-interest">Tasa de Interés Anual (%)</label>
+                        <input type="number" id="annual-interest" placeholder="Tasa anual" step="0.01" min="0" oninput="calculateMonthlyRate()">
+                    </div>
+                    <div class="form-group">
+                        <label for="monthly-interest">Tasa de Interés Mensual (%)</label>
+                        <input type="number" id="monthly-interest" placeholder="Tasa mensual" step="0.01" min="0" oninput="calculateAnnualRate()">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="term">Plazo (meses)</label>
+                    <input type="number" id="term" placeholder="Ingresa el plazo en meses" required min="1">
+                </div>
+                
+                <div class="form-group">
+                    <label for="extra-payment">Abono Adicional Mensual (opcional)</label>
+                    <input type="number" id="extra-payment" placeholder="Monto adicional a la cuota mensual" min="0" value="0">
+                </div>
+                
+                <button type="button" id="calculate-btn">Calcular Cuotas</button>
+            </form>
+        </div>
+        
+        <div class="card results" id="results">
+            <h2>Resultados del Cálculo</h2>
+            
+            <div class="result-summary">
+                <div class="result-item">
+                    <div class="result-label">Monto del Préstamo:</div>
+                    <div class="result-value" id="result-amount"></div>
+                </div>
+                
+                <div class="result-item">
+                    <div class="result-label">Tasa de Interés:</div>
+                    <div class="result-value" id="result-interest"></div>
+                </div>
+                
+                <div class="result-item">
+                    <div class="result-label">Plazo Original:</div>
+                    <div class="result-value" id="result-term"></div>
+                </div>
+                
+                <div class="result-item">
+                    <div class="result-label">Cuota Mensual Regular:</div>
+                    <div class="result-value" id="result-payment"></div>
+                </div>
+                
+                <div class="result-item" id="extra-payment-row">
+                    <div class="result-label">Abono Adicional Mensual:</div>
+                    <div class="result-value" id="result-extra-payment"></div>
+                </div>
+                
+                <div class="result-item">
+                    <div class="result-label">Total a Pagar Sin Abonos:</div>
+                    <div class="result-value" id="result-total-without-extra"></div>
+                </div>
+                
+                <div class="result-item" id="total-with-extra-row">
+                    <div class="result-label">Total a Pagar Con Abonos:</div>
+                    <div class="result-value" id="result-total-with-extra"></div>
+                </div>
+            </div>
+            
+            <div id="savings-section" class="savings" style="display: none;">
+                <h3>Ahorros por Abonos Adicionales</h3>
+                <div class="result-item">
+                    <div class="result-label">Ahorro en Intereses:</div>
+                    <div class="result-value" id="interest-savings"></div>
+                </div>
+                
+                <div class="result-item">
+                    <div class="result-label">Plazo Reducido:</div>
+                    <div class="result-value" id="time-savings"></div>
+                </div>
+                
+                <div class="result-item">
+                    <div class="result-label">Término del Crédito:</div>
+                    <div class="result-value" id="payoff-date"></div>
+                </div>
+            </div>
+            
+            <div class="comparison-container" id="comparison-container" style="display: none;">
+                <div class="comparison-col">
+                    <h3>Sin Abonos Adicionales</h3>
+                    <div class="result-item">
+                        <div class="result-label">Cuota Mensual:</div>
+                        <div class="result-value" id="regular-payment"></div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Duración:</div>
+                        <div class="result-value" id="regular-term"></div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Total de Intereses:</div>
+                        <div class="result-value" id="regular-interest"></div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Fecha de Finalización:</div>
+                        <div class="result-value" id="regular-end-date"></div>
+                    </div>
+                </div>
+                
+                <div class="comparison-col">
+                    <h3>Con Abonos Adicionales</h3>
+                    <div class="result-item">
+                        <div class="result-label">Pago Mensual Total:</div>
+                        <div class="result-value" id="extra-total-payment"></div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Duración:</div>
+                        <div class="result-value" id="extra-term"></div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Total de Intereses:</div>
+                        <div class="result-value" id="extra-interest"></div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Fecha de Finalización:</div>
+                        <div class="result-value" id="extra-end-date"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="table-container">
+                <h3>Tabla de Amortización (con abonos adicionales)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mes</th>
+                            <th>Cuota Regular</th>
+                            <th>Abono Extra</th>
+                            <th>Interés</th>
+                            <th>Capital</th>
+                            <th>Saldo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="amortization-table">
+                        <!-- La tabla se completará con JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Escuchar el botón de calcular
+            document.getElementById('calculate-btn').addEventListener('click', calculateLoan);
         });
         
-        // Si el saldo es 0 o negativo, terminar
-        if (saldoRestante <= 0) {
-          break;
+        function changeTheme(theme) {
+            document.body.className = theme;
         }
-      }
-      
-      // Calcular ahorros
-      const interesesAhorrados = datosNormales.totalIntereses - totalIntereses;
-      const ahorroTiempo = plazo - mesesReales;
-      const anios = Math.floor(mesesReales / 12);
-      const mesesRestantes = mesesReales % 12;
-      
-      // Guardar datos del resumen para exportación
-      datosSummary = {
-        monto: monto,
-        tasaAnual: tasaAnual,
-        tasaMensual: tasaInteresMensual * 100,
-        plazoOriginal: plazo,
-        plazoOriginalAnios: Math.floor(plazo/12),
-        plazoOriginalMeses: plazo%12,
-        cuotaMensual: cuotaMensual,
-        totalPagado: totalPagado,
-        totalIntereses: totalIntereses,
-        totalAbonosExtra: totalAbonosExtra,
-        interesesAhorrados: interesesAhorrados,
-        ahorroTiempo: ahorroTiempo,
-        duracionReal: mesesReales,
-        duracionRealAnios: anios,
-        duracionRealMeses: mesesRestantes
-      };
-      
-      // Mostrar resumen
-      const summary = document.getElementById('summary');
-      summary.innerHTML = `
-        <p>Monto del préstamo: ${formatCurrency(monto)}</p>
-        <p>Tasa de interés anual: ${tasaAnual.toFixed(2)}%</p>
-        <p>Tasa de interés mensual: ${(tasaInteresMensual * 100).toFixed(4)}%</p>
-        <p>Plazo original: ${plazo} meses (${Math.floor(plazo/12)} años y ${plazo%12} meses)</p>
-        <p>Cuota mensual calculada: ${formatCurrency(cuotaMensual)}</p>
-        <p>Total pagado: ${formatCurrency(totalPagado)}</p>
-        <p>Total intereses: ${formatCurrency(totalIntereses)}</p>
-        ${abonoAdicional > 0 ? `
-          <p>Total abonos adicionales: ${formatCurrency(totalAbonosExtra)}</p>
-          <p class="ahorro">Intereses ahorrados: ${formatCurrency(interesesAhorrados)}</p>
-          ${ahorroTiempo > 0 ? `<p class="ahorro">Ahorro en tiempo: ${ahorroTiempo} meses</p>` : ''}
-        ` : ''}
-        <p>Duración real del crédito: ${mesesReales} meses ${anios > 0 || mesesRestantes > 0 ? `(${anios} año${anios !== 1 ? 's' : ''} y ${mesesRestantes} mes${mesesRestantes !== 1 ? 'es' : ''})` : ''}</p>
-      `;
-      
-      // Mostrar resultados
-      document.getElementById('results').style.display = 'block';
-    }
-    
-    // Función para calcular amortización sin abonos adicionales (para comparar)
-    function calcularAmortizacionSimple(monto, tasaInteresMensual, plazo, cuotaMensual) {
-      let saldoRestante = monto;
-      let totalIntereses = 0;
-      
-      for (let mes = 1; mes <= plazo; mes++) {
-        const interesMensual = saldoRestante * tasaInteresMensual;
-        const capitalMensual = cuotaMensual - interesMensual;
         
-        saldoRestante -= capitalMensual;
-        totalIntereses += interesMensual;
-        
-        if (saldoRestante <= 0) break;
-      }
-      
-      return {
-        totalIntereses: totalIntereses
-      };
-    }
-    
-    function formatCurrency(value) {
-      return new Intl.NumberFormat('es-ES', {
-        style: 'decimal',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }).format(value);
-    }
-    
-    // Función para exportar a Excel (CSV)
-    function exportarExcel() {
-      if (datosTabla.length === 0) {
-        alert('Primero debe calcular la amortización');
-        return;
-      }
-      
-      // Crear contenido CSV
-      let csvContent = "data:text/csv;charset=utf-8,";
-      
-      // Añadir información del resumen al inicio
-      csvContent += "RESUMEN DEL CRÉDITO\r\n";
-      csvContent += "Monto del préstamo:," + formatCurrency(datosSummary.monto) + "\r\n";
-      csvContent += "Tasa de interés anual:," + datosSummary.tasaAnual.toFixed(2) + "%\r\n";
-      csvContent += "Tasa de interés mensual:," + datosSummary.tasaMensual.toFixed(4) + "%\r\n";
-      csvContent += "Plazo original:," + datosSummary.plazoOriginal + " meses (" + datosSummary.plazoOriginalAnios + " años y " + datosSummary.plazoOriginalMeses + " meses)\r\n";
-      csvContent += "Cuota mensual calculada:," + formatCurrency(datosSummary.cuotaMensual) + "\r\n";
-      csvContent += "Total pagado:," + formatCurrency(datosSummary.totalPagado) + "\r\n";
-      csvContent += "Total intereses:," + formatCurrency(datosSummary.totalIntereses) + "\r\n";
-      
-      if (datosSummary.totalAbonosExtra > 0) {
-        csvContent += "Total abonos adicionales:," + formatCurrency(datosSummary.totalAbonosExtra) + "\r\n";
-        csvContent += "Intereses ahorrados:," + formatCurrency(datosSummary.interesesAhorrados) + "\r\n";
-        if (datosSummary.ahorroTiempo > 0) {
-          csvContent += "Ahorro en tiempo:," + datosSummary.ahorroTiempo + " meses\r\n";
+        function calculateMonthlyRate() {
+            const annualRate = parseFloat(document.getElementById('annual-interest').value) || 0;
+            if (annualRate >= 0) {
+                const monthlyRate = annualRate / 12;
+                document.getElementById('monthly-interest').value = monthlyRate.toFixed(4);
+            }
         }
-      }
-      
-      csvContent += "Duración real del crédito:," + datosSummary.duracionReal + " meses (" + datosSummary.duracionRealAnios + " años y " + datosSummary.duracionRealMeses + " meses)\r\n\r\n";
-      
-      // Añadir encabezados de la tabla
-      csvContent += "Mes,Cuota,Interés,Abono Extra,Capital,Saldo\r\n";
-      
-      // Añadir filas de datos
-      datosTabla.forEach(function(fila) {
-        let row = fila.mes + "," + 
-                  fila.cuota.toFixed(2) + "," + 
-                  fila.interes.toFixed(2) + "," + 
-                  fila.abonoExtra.toFixed(2) + "," + 
-                  fila.capital.toFixed(2) + "," + 
-                  fila.saldo.toFixed(2);
-        csvContent += row + "\r\n";
-      });
-      
-      // Crear elemento de descarga
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", "amortizacion_credito.csv");
-      document.body.appendChild(link);
-      
-      // Descargar archivo
-      link.click();
-      
-      // Limpiar
-      document.body.removeChild(link);
-    }
-  </script>
+        
+        function calculateAnnualRate() {
+            const monthlyRate = parseFloat(document.getElementById('monthly-interest').value) || 0;
+            if (monthlyRate >= 0) {
+                const annualRate = monthlyRate * 12;
+                document.getElementById('annual-interest').value = annualRate.toFixed(4);
+            }
+        }
+        
+        function calculateLoan() {
+            // Obtener valores del formulario
+            const amountEl = document.getElementById('amount');
+            const annualInterestEl = document.getElementById('annual-interest');
+            const monthlyInterestEl = document.getElementById('monthly-interest');
+            const termEl = document.getElementById('term');
+            const extraPaymentEl = document.getElementById('extra-payment');
+            
+            // Validar que los campos obligatorios contengan valores válidos
+            if (!amountEl.value || (!annualInterestEl.value && !monthlyInterestEl.value) || !termEl.value) {
+                alert('Por favor, completa los campos obligatorios (monto, tasa de interés y plazo)');
+                return;
+            }
+            
+            const amount = parseFloat(amountEl.value);
+            const monthlyInterest = parseFloat(monthlyInterestEl.value) || 0;
+            const term = parseInt(termEl.value);
+            const extraPayment = parseFloat(extraPaymentEl.value) || 0;
+            
+            // Validar valores positivos
+            if (amount <= 0 || term <= 0) {
+                alert('Por favor, ingresa valores positivos mayores que cero para el monto y el plazo');
+                return;
+            }
+            
+            // Convertir tasa a decimal
+            const monthlyRate = monthlyInterest / 100;
+            const annualRate = monthlyRate * 12 * 100;
+            
+            // Calcular la cuota mensual
+            let monthlyPayment;
+            
+            if (monthlyRate === 0) {
+                monthlyPayment = amount / term;
+            } else {
+                monthlyPayment = amount * monthlyRate * Math.pow(1 + monthlyRate, term) / (Math.pow(1 + monthlyRate, term) - 1);
+            }
+            
+            // Calcular el total a pagar sin abonos adicionales
+            const totalPaymentWithoutExtra = monthlyPayment * term;
+            const totalInterestWithoutExtra = totalPaymentWithoutExtra - amount;
+            
+            // Generar tabla de amortización y calcular el total con abonos adicionales
+            const amortizationResults = generateAmortizationTable(amount, monthlyRate, term, monthlyPayment, extraPayment);
+            
+            // Mostrar información sobre ahorros
+            const showSavings = extraPayment > 0;
+            document.getElementById('savings-section').style.display = showSavings ? 'block' : 'none';
+            document.getElementById('extra-payment-row').style.display = showSavings ? 'flex' : 'none';
+            document.getElementById('total-with-extra-row').style.display = showSavings ? 'flex' : 'none';
+            document.getElementById('comparison-container').style.display = showSavings ? 'flex' : 'none';
+            
+            // Calcular fechas
+            const today = new Date();
+            const regularEndDate = new Date(today);
+            regularEndDate.setMonth(regularEndDate.getMonth() + term);
+            
+            const extraEndDate = new Date(today);
+            extraEndDate.setMonth(extraEndDate.getMonth() + amortizationResults.totalMonths);
+            
+            // Mostrar resultados
+            document.getElementById('result-amount').textContent = formatCurrency(amount);
+            document.getElementById('result-interest').textContent = `${monthlyInterest.toFixed(2)}% mensual (${annualRate.toFixed(2)}% anual)`;
+            document.getElementById('result-term').textContent = `${term} meses (${Math.floor(term/12)} años y ${term%12} meses)`;
+            document.getElementById('result-payment').textContent = formatCurrency(monthlyPayment);
+            document.getElementById('result-extra-payment').textContent = formatCurrency(extraPayment);
+            document.getElementById('result-total-without-extra').textContent = formatCurrency(totalPaymentWithoutExtra);
+            document.getElementById('result-total-with-extra').textContent = formatCurrency(amortizationResults.totalPaid);
+            
+            if (showSavings) {
+                const interestSavings = totalInterestWithoutExtra - amortizationResults.totalInterest;
+                const monthsSaved = term - amortizationResults.totalMonths;
+                const yearsSaved = Math.floor(monthsSaved / 12);
+                const remainingMonthsSaved = monthsSaved % 12;
+                
+                document.getElementById('interest-savings').textContent = formatCurrency(interestSavings);
+                document.getElementById('time-savings').textContent = monthsSaved > 0 
+                    ? `${monthsSaved} meses (${yearsSaved} años y ${remainingMonthsSaved} meses)` 
+                    : "No hay reducción de plazo";
+                document.getElementById('payoff-date').textContent = formatDate(extraEndDate);
+                
+                // Llenar la comparación
+                document.getElementById('regular-payment').textContent = formatCurrency(monthlyPayment);
+                document.getElementById('regular-term').textContent = `${term} meses`;
+                document.getElementById('regular-interest').textContent = formatCurrency(totalInterestWithoutExtra);
+                document.getElementById('regular-end-date').textContent = formatDate(regularEndDate);
+                
+                document.getElementById('extra-total-payment').textContent = formatCurrency(monthlyPayment + extraPayment);
+                document.getElementById('extra-term').textContent = `${amortizationResults.totalMonths} meses`;
+                document.getElementById('extra-interest').textContent = formatCurrency(amortizationResults.totalInterest);
+                document.getElementById('extra-end-date').textContent = formatDate(extraEndDate);
+            }
+            
+            // Mostrar sección de resultados
+            document.getElementById('results').style.display = 'block';
+            
+            // Hacer scroll a los resultados
+            document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function generateAmortizationTable(principal, monthlyRate, term, monthlyPayment, extraPayment) {
+            const tableBody = document.getElementById('amortization-table');
+            tableBody.innerHTML = '';
+            
+            let balance = principal;
+            let month = 0;
+            let totalPaid = 0;
+            let totalInterest = 0;
+            
+            while (balance > 0 && month < term) {
+                month++;
+                
+                const interest = balance * monthlyRate;
+                const regularPrincipalPayment = Math.min(balance, monthlyPayment - interest);
+                const totalPrincipalPayment = Math.min(balance, regularPrincipalPayment + extraPayment);
+                const actualExtraPayment = Math.min(extraPayment, balance - regularPrincipalPayment);
+                
+                balance -= totalPrincipalPayment;
+                balance = Math.max(0, balance); // Asegurar que nunca sea negativo
+                
+                totalPaid += monthlyPayment + actualExtraPayment;
+                totalInterest += interest;
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${month}</td>
+                    <td>${formatCurrency(monthlyPayment)}</td>
+                    <td>${formatCurrency(actualExtraPayment)}</td>
+                    <td>${formatCurrency(interest)}</td>
+                    <td>${formatCurrency(totalPrincipalPayment)}</td>
+                    <td>${formatCurrency(balance)}</td>
+                `;
+                
+                tableBody.appendChild(row);
+                
+                // Si ya se pagó todo, salir del loop
+                if (balance === 0) break;
+            }
+            
+            return {
+                totalMonths: month,
+                totalPaid: totalPaid,
+                totalInterest: totalInterest
+            };
+        }
+        
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('es-MX', { 
+                style: 'currency', 
+                currency: 'MXN',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(value);
+        }
+        
+        function formatDate(date) {
+            const day = date.getDate();
+            const month = date.getMonth() + 1;
+            const year = date.getFullYear();
+            return `${day}/${month}/${year}`;
+        }
+    </script>
 </body>
 </html>
